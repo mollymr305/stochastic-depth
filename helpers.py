@@ -1,17 +1,16 @@
+"""Helper functions."""
 import theano
 import lasagne as nn
 
-""" Self-written helper functions """
 
-
-# save output to file instead of printing
+# Save output to file instead of printing
 def report(text, output_file='logFile.txt'):
     f = open(output_file, 'a')
     f.write('{}\n'.format(text))
     f.close
 
 
-# layer for stochastic depth
+# Layer for stochastic depth
 class MultiplicationLayer(nn.layers.Layer):
     def __init__(self, incoming, C, **kwargs):
         super(MultiplicationLayer, self).__init__(incoming, **kwargs)    
@@ -20,9 +19,9 @@ class MultiplicationLayer(nn.layers.Layer):
         return self.C.get_value() * input
 
 
-# re-writing residual block to add stochastic depth
+# Re-writing residual block to add stochastic depth
 def ResBlockLayer(incoming, C=None, increase_channels=False):
-    # identity (no 'projection' option)
+    # Identity (no 'projection' option)
     if increase_channels:
         first_stride = (2, 2)
         num_filters = incoming.output_shape[1] * 2
@@ -36,6 +35,7 @@ def ResBlockLayer(incoming, C=None, increase_channels=False):
         num_filters = incoming.output_shape[1]
         first_stride = (1, 1)
         identity = incoming
+
     # fn: two stacks of convolutional layers
     fn = nn.layers.Conv2DLayer(
         incoming=incoming, num_filters=num_filters, filter_size=(3, 3),
@@ -47,13 +47,15 @@ def ResBlockLayer(incoming, C=None, increase_channels=False):
         stride=(1, 1), pad='same', nonlinearity=None,
         W=nn.init.HeNormal(gain='relu'), flip_filters=False)
     fn = nn.layers.batch_norm(fn)
-    # include option stochastic depth option here
+
+    # Include option stochastic depth option here
     # C: 'switch' where 1.=ON and 0.=OFF; C=theano.shared(nn.utils.floatX(1.))
     if C is not None:
         fn = MultiplicationLayer(incoming=fn, C=C)
+
     # ResBlock: ReLU(C * fn + identity)
     ResBlock = nn.layers.ElemwiseSumLayer([fn, identity])
     ResBlock = nn.layers.NonlinearityLayer(
         incoming=ResBlock, nonlinearity=nn.nonlinearities.rectify)    
-    return ResBlock
 
+    return ResBlock
